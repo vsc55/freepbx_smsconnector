@@ -1,0 +1,50 @@
+name: Update module.json to the latest version release
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  update-module-json:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          ref: pages
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - name: Install dependencies
+        run: |
+          pip install xmltodict
+          pip install requests 
+
+      - name: Update module.json
+        env:
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
+          REPOSITORY_NAME: ${{ github.repository }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: python update-module-json-script.py $RELEASE_VERSION $REPOSITORY_NAME $REPOSITORY_OWNER
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            *.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit and push changes
+        run: |
+            git config --global user.name "${{ github.repository_owner }}"
+            git config --global user.email "${{ vars.EMAIL_COMMIT }}"
+            git add module.json
+            git commit -m "Update module.json"
+            git push origin pages
